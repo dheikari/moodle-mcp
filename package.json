@@ -24,9 +24,9 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test dist/safety.test.js",
     "start": "node dist/index.js",
-    "prepack": "npm run build",
-    "serve": "node dist/index.js --port 8933"
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@ink-waffle/study-browser": "^0.1.0",
