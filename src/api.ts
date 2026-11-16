@@ -173,17 +173,6 @@ export interface ForumPost {
   isdeleted: boolean;
 }
 
-export interface Conversation {
-  id: number;
-  name: string | null;
-  type: number;
-  membercount: number;
-  unreadcount: number | null;
-  isread: boolean;
-  members: { id: number; fullname: string }[];
-  messages: { id: number; text: string; timecreated: number; useridfrom: number }[];
-}
-
 export interface Notification {
   id: number;
   subject: string;
@@ -297,29 +286,6 @@ export async function getDiscussions(
 export async function getDiscussionPosts(client: MoodleClient, discussionid: number): Promise<ForumPost[]> {
   const res = await client.call<{ posts: ForumPost[] }>("mod_forum_get_discussion_posts", { discussionid });
   return res.posts ?? [];
-}
-
-export async function getConversations(client: MoodleClient, limit = 15): Promise<Conversation[]> {
-  const res = await client.call<{ conversations: Conversation[] }>("core_message_get_conversations", {
-    userid: client.site.userid,
-    limitfrom: 0,
-    limitnum: limit,
-  });
-  return res.conversations ?? [];
-}
-
-export async function getConversationMessages(
-  client: MoodleClient,
-  conversationid: number,
-  limit = 30,
-): Promise<{ messages: { id: number; text: string; timecreated: number; useridfrom: number }[]; members: { id: number; fullname: string }[] }> {
-  return client.call("core_message_get_conversation_messages", {
-    currentuserid: client.site.userid,
-    convid: conversationid,
-    limitfrom: 0,
-    limitnum: limit,
-    newest: true,
-  });
 }
 
 export async function getCourseModuleInfo(client: MoodleClient, cmid: number): Promise<CourseModuleInfo> {

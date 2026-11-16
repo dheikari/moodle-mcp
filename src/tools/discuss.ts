@@ -1,14 +1,12 @@
 import {
   cached,
-  getConversationMessages,
-  getConversations,
   getCourses,
   getDiscussionPosts,
   getDiscussions,
   getForums,
   type Course,
 } from "../api.js";
-import { fmtDate, fmtRelative, fmtSize, html2line, html2md, table } from "../format.js";
+import { fmtDate, fmtSize, html2md, table } from "../format.js";
 import type { MoodleClient } from "../ws.js";
 import { resolveCourse } from "./courses.js";
 
@@ -95,44 +93,4 @@ export async function forum(
     f.unreadpostscount || "",
   ]);
   return `${forums.length} forum(s):\n\n${table(["forumid", "cmid", "course", "name", "type", "discussions", "unread"], rows)}\n\nmoodle_forum({ forumid: <id> }) lists its discussions.`;
-}
-
-export async function messages(
-  client: MoodleClient,
-  opts: { conversation?: number; limit?: number } = {},
-): Promise<string> {
-  const limit = opts.limit ?? 20;
-
-  if (opts.conversation) {
-    const res = await getConversationMessages(client, opts.conversation, limit);
-    const who = new Map((res.members ?? []).map((m) => [m.id, m.fullname]));
-    const msgs = [...(res.messages ?? [])].sort((a, b) => a.timecreated - b.timecreated);
-    if (msgs.length === 0) return `Conversation ${opts.conversation} has no messages.`;
-    const out = [`# Conversation ${opts.conversation}`, ""];
-    for (const m of msgs) {
-      out.push(
-        `**${who.get(m.useridfrom) ?? m.useridfrom}** · ${fmtDate(m.timecreated)}`,
-        html2md(m.text, 2000).replace(/^/gm, "> "),
-        "",
-      );
-    }
-    return out.join("\n");
-  }
-
-  const convs = await getConversations(client, limit);
-  if (convs.length === 0) return "No conversations.";
-  const rows = convs.map((c) => {
-    const others = (c.members ?? []).filter((m) => m.id !== client.site.userid).map((m) => m.fullname);
-    const last = c.messages?.[0];
-    return [
-      c.id,
-      // `name` is "" rather than null for one-to-one conversations.
-      c.name || others.join(", ") || (c.type === 3 ? "(self)" : "(group)"),
-      c.unreadcount || "",
-      last ? fmtDate(last.timecreated) : "",
-      last ? fmtRelative(last.timecreated) : "",
-      last ? html2line(last.text, 90) : "",
-    ];
-  });
-  return `${convs.length} conversation(s):\n\n${table(["convid", "with", "unread", "last", "when", "preview"], rows)}\n\nmoodle_messages({ conversation: <convid> }) reads one.`;
 }

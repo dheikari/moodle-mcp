@@ -1,5 +1,6 @@
 import { mintTokenViaBrowser, mintTokenViaPassword, planConnection } from "../auth.js";
 import {
+  assertAllowedHost,
   getSite,
   listSites,
   normalizeUrl,
@@ -22,7 +23,6 @@ const KEY_FUNCTIONS: [string, string][] = [
   ["core_calendar_get_action_events_by_timesort", "deadlines"],
   ["mod_forum_get_forums_by_courses", "forums"],
   ["mod_forum_get_discussion_posts", "forum posts"],
-  ["core_message_get_conversations", "messages"],
   ["mod_quiz_get_quizzes_by_courses", "quizzes"],
 ];
 
@@ -56,6 +56,7 @@ export async function connect(opts: {
   }
 
   const url = normalizeUrl(opts.url);
+  assertAllowedHost(url); // before any request: the host list is the owner's, not the agent's
   const plan = await planConnection(url);
 
   if (plan.strategy === "unsupported") {

@@ -4,10 +4,9 @@ import { z } from "zod";
 import { activityDetail } from "./tools/activity.js";
 import { deadlines, grades } from "./tools/agenda.js";
 import { courseOutline, coursesList, searchCourses } from "./tools/courses.js";
-import { forum, messages } from "./tools/discuss.js";
+import { forum } from "./tools/discuss.js";
 import { notifications, whatsNew } from "./tools/feed.js";
 import { download } from "./tools/files.js";
-import { listFunctions, rawCall } from "./tools/raw.js";
 import { clientFor, connect, disconnect, status } from "./tools/site.js";
 import { MoodleError } from "./ws.js";
 
@@ -38,10 +37,8 @@ async function run(fn: () => Promise<string>): Promise<Result> {
 }
 
 /**
- * A fresh McpServer per client session. The Server class binds 1:1 to a
- * transport, so HTTP mode needs one of these per connected client — while the
- * things that must stay single (the browser, the token store, the cache) live
- * in modules shared by all of them.
+ * One McpServer per transport. The things that must stay single (the browser,
+ * the token store, the cache) live in modules shared by all of them.
  */
 export function createServer(): McpServer {
   const server = new McpServer({ name: "moodle-mcp", version: "0.2.0" });
@@ -236,20 +233,6 @@ export function createServer(): McpServer {
   );
 
   server.registerTool(
-    "moodle_messages",
-    {
-      title: "Messages",
-      description: "Moodle's private conversations: the list, or the messages of one conversation.",
-      inputSchema: {
-        conversation: z.number().optional().describe("Conversation id to read."),
-        limit: z.number().optional(),
-        ...SITE,
-      },
-    },
-    async (a) => run(async () => messages(await clientFor(a.site), { conversation: a.conversation, limit: a.limit })),
-  );
-
-  server.registerTool(
     "moodle_notifications",
     {
       title: "Notification feed",
@@ -294,9 +277,9 @@ export function createServer(): McpServer {
       inputSchema: {
         cmid: z.number().optional().describe("All files of this activity, including assignment task attachments."),
         course: COURSE_REF.optional().describe("Every file in the course."),
-        url: z.string().optional().describe("A single Moodle file URL (it is signed with the token automatically)."),
+        url: z.string().optional().describe("A single file URL on the connected Moodle site (signed with the token automatically; other hosts are refused)."),
         filter: z.string().optional().describe("Only files whose name or location contains this text."),
-        dest: z.string().optional().describe("Target directory. Default ~/.moodle-mcp/files/<site>/<courseid>/."),
+        dest: z.string().optional().describe("Folder inside the downloads root (~/.moodle-mcp/files, or MOODLE_MCP_DOWNLOADS); paths outside it are refused. Default <site>/<courseid>/ inside the root."),
         max: z.number().optional().describe("Safety cap on file count. Default 40."),
         ...SITE,
       },
@@ -312,34 +295,6 @@ export function createServer(): McpServer {
           max: a.max,
         }),
       ),
-  );
-
-  /* ---------------- raw access ---------------- */
-
-  server.registerTool(
-    "moodle_call",
-    {
-      title: "Raw web-service call",
-      description:
-        "Call any Moodle web-service function directly and get raw JSON. The tools above cover the common ground; this covers the other ~430 functions and site-specific plugins. Read-only in v1: only names containing _get_, _search_, _is_, _can_ or _check_ are permitted.",
-      inputSchema: {
-        function: z.string().describe("e.g. core_completion_get_activities_completion_status"),
-        params: z.record(z.unknown()).optional().describe("Arguments; arrays and objects are flattened Moodle-style."),
-        max_chars: z.number().optional(),
-        ...SITE,
-      },
-    },
-    async (a) => run(async () => rawCall(await clientFor(a.site), a.function, a.params ?? {}, a.max_chars)),
-  );
-
-  server.registerTool(
-    "moodle_functions",
-    {
-      title: "List web-service functions",
-      description: "What this site's token can actually call — useful before reaching for moodle_call.",
-      inputSchema: { filter: z.string().optional().describe("Substring filter, e.g. 'quiz'."), ...SITE },
-    },
-    async (a) => run(async () => listFunctions(await clientFor(a.site), a.filter)),
   );
 
   return server;
